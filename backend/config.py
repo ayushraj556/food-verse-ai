@@ -18,13 +18,16 @@ class Settings:
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 
     # Server settings
-    HOST: str = os.getenv("HOST", "127.0.0.1")
+    HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
 
     # CORS
     CORS_ORIGINS: list[str] = [
         origin.strip() 
-        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+        for origin in os.getenv(
+            "CORS_ORIGINS", 
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:8000,http://127.0.0.1:8000"
+        ).split(",")
         if origin.strip()
     ]
 
