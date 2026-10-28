@@ -13,7 +13,8 @@ import {
   Plus,
   X,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Check
 } from 'lucide-react';
 import { api } from '../api/client';
 import DemoBadge from '../components/DemoBadge';
@@ -33,8 +34,12 @@ export default function MealPlanner({ forceDemo }) {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [savedPlans, setSavedPlans] = useState([]);
   const [activeView, setActiveView] = useState('planner'); // 'planner' | 'saved_list'
-  const [isEditing, setIsEditing] = useState(false);
+  
+  // Edit states
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editNotes, setEditNotes] = useState('');
+  const [isEditingMeals, setIsEditingMeals] = useState(false);
+  const [dayMealForm, setDayMealForm] = useState(null);
   const [error, setError] = useState(null);
 
   const fetchSavedPlans = async () => {
@@ -49,6 +54,16 @@ export default function MealPlanner({ forceDemo }) {
   useEffect(() => {
     fetchSavedPlans();
   }, []);
+
+  // When selected day or current plan changes, sync dayMealForm
+  useEffect(() => {
+    if (currentPlan?.plan_data?.[selectedDay]) {
+      setDayMealForm(JSON.parse(JSON.stringify(currentPlan.plan_data[selectedDay])));
+    } else {
+      setDayMealForm(null);
+    }
+    setIsEditingMeals(false);
+  }, [selectedDay, currentPlan]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -80,7 +95,7 @@ export default function MealPlanner({ forceDemo }) {
     }
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveNotes = async () => {
     if (!currentPlan?.id) return;
     try {
       const updated = await api.updateMealPlan(currentPlan.id, {
@@ -88,10 +103,28 @@ export default function MealPlanner({ forceDemo }) {
         title: currentPlan.title,
       });
       setCurrentPlan(updated);
-      setIsEditing(false);
+      setIsEditingNotes(false);
       fetchSavedPlans();
     } catch (err) {
-      setError('Could not update meal plan.');
+      setError('Could not update meal plan notes.');
+    }
+  };
+
+  const handleSaveMeals = async () => {
+    if (!currentPlan?.id || !dayMealForm) return;
+    try {
+      const updatedPlanData = {
+        ...currentPlan.plan_data,
+        [selectedDay]: dayMealForm,
+      };
+      const updated = await api.updateMealPlan(currentPlan.id, {
+        plan_data: updatedPlanData,
+      });
+      setCurrentPlan(updated);
+      setIsEditingMeals(false);
+      fetchSavedPlans();
+    } catch (err) {
+      setError('Could not save updated meal schedule.');
     }
   };
 
@@ -296,18 +329,18 @@ export default function MealPlanner({ forceDemo }) {
                       <DemoBadge isDemo={currentPlan.is_demo} />
                       <button
                         type="button"
-                        onClick={() => setIsEditing(!isEditing)}
+                        onClick={() => setIsEditingNotes(!isEditingNotes)}
                         className="p-1.5 rounded-lg border border-cream-300 hover:bg-cream-100 text-slate-600 text-xs flex items-center gap-1"
                         title="Edit plan notes"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Edit</span>
+                        <span className="hidden sm:inline">Notes</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Notes / Edit */}
-                  {isEditing ? (
+                  {isEditingNotes ? (
                     <div className="space-y-2 pt-2 border-t border-cream-200">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
                         Edit Plan Notes & Instructions:
@@ -320,7 +353,7 @@ export default function MealPlanner({ forceDemo }) {
                       />
                       <button
                         type="button"
-                        onClick={handleSaveEdit}
+                        onClick={handleSaveNotes}
                         className="px-3 py-1.5 rounded-lg bg-forest-600 text-white text-xs font-semibold hover:bg-forest-700 flex items-center gap-1"
                       >
                         <Save className="w-3.5 h-3.5" />
@@ -361,9 +394,20 @@ export default function MealPlanner({ forceDemo }) {
                 {dayData ? (
                   <div className="p-6 rounded-3xl bg-white border border-cream-200 shadow-soft space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-cream-200">
-                      <h4 className="text-base font-extrabold text-slate-900">
-                        {selectedDay} Schedule
-                      </h4>
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-base font-extrabold text-slate-900">
+                          {selectedDay} Schedule
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingMeals(!isEditingMeals)}
+                          className="px-2.5 py-1 rounded-lg border border-cream-300 hover:bg-cream-100 text-[11px] font-semibold text-slate-600 flex items-center gap-1"
+                        >
+                          <Edit2 className="w-3 h-3 text-forest-600" />
+                          <span>{isEditingMeals ? 'Cancel Edit' : 'Edit Day Meals'}</span>
+                        </button>
+                      </div>
+
                       <div className="flex items-center gap-3 text-xs">
                         <span className="flex items-center gap-1 font-bold text-slate-800">
                           <Flame className="w-3.5 h-3.5 text-rose-500" />
@@ -377,10 +421,71 @@ export default function MealPlanner({ forceDemo }) {
                       </div>
                     </div>
 
-                    {/* Meal Slots */}
+                    {/* Meal Slots (View or Edit Form) */}
                     {['breakfast', 'lunch', 'dinner', 'snack'].map((slotKey) => {
                       const meal = dayData[slotKey];
-                      if (!meal) return null;
+                      if (!meal && !isEditingMeals) return null;
+
+                      if (isEditingMeals && dayMealForm) {
+                        const curMeal = dayMealForm[slotKey] || {
+                          name: '',
+                          description: '',
+                          estimated_calories_kcal: 0,
+                          protein_g: 0,
+                        };
+                        return (
+                          <div
+                            key={slotKey}
+                            className="p-4 rounded-2xl bg-cream-50 border border-forest-300 space-y-3"
+                          >
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-forest-800 bg-white px-2 py-0.5 rounded-md border border-cream-200 inline-block">
+                              Edit {slotKey}
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={curMeal.name}
+                                onChange={(e) => {
+                                  setDayMealForm({
+                                    ...dayMealForm,
+                                    [slotKey]: { ...curMeal, name: e.target.value },
+                                  });
+                                }}
+                                placeholder="Meal name"
+                                className="px-3 py-1.5 text-xs rounded-lg border border-cream-300 bg-white"
+                              />
+                              <input
+                                type="number"
+                                value={curMeal.estimated_calories_kcal}
+                                onChange={(e) => {
+                                  setDayMealForm({
+                                    ...dayMealForm,
+                                    [slotKey]: {
+                                      ...curMeal,
+                                      estimated_calories_kcal: Number(e.target.value),
+                                    },
+                                  });
+                                }}
+                                placeholder="Calories (kcal)"
+                                className="px-3 py-1.5 text-xs rounded-lg border border-cream-300 bg-white"
+                              />
+                            </div>
+                            <textarea
+                              value={curMeal.description}
+                              onChange={(e) => {
+                                setDayMealForm({
+                                  ...dayMealForm,
+                                  [slotKey]: { ...curMeal, description: e.target.value },
+                                });
+                              }}
+                              rows={2}
+                              placeholder="Meal description / ingredients"
+                              className="w-full px-3 py-1.5 text-xs rounded-lg border border-cream-300 bg-white"
+                            />
+                          </div>
+                        );
+                      }
+
                       return (
                         <div
                           key={slotKey}
@@ -399,6 +504,19 @@ export default function MealPlanner({ forceDemo }) {
                         </div>
                       );
                     })}
+
+                    {isEditingMeals && (
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleSaveMeals}
+                          className="px-4 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Save {selectedDay} Changes</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-3xl border border-cream-200">

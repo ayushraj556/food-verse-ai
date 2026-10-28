@@ -159,7 +159,29 @@ export default function KitchenHygiene({ forceDemo }) {
             <div className="space-y-6 animate-fadeIn">
               {/* Overall Score Card */}
               <div className="p-6 rounded-3xl bg-white border border-cream-200 shadow-soft space-y-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Media Preview */}
+                {result.file_name && (
+                  <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-slate-900 shadow-inner flex items-center justify-center">
+                    {result.media_type === 'video' ? (
+                      <video
+                        src={api.getUploadUrl(result.file_name)}
+                        controls
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <img
+                        src={api.getUploadUrl(result.file_name)}
+                        alt="Kitchen area"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider border border-white/20">
+                      {result.media_type === 'video' ? 'Video Frame Analysis' : 'Station Still Frame'}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-start justify-between gap-3 pt-1">
                   <div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Assessment Target

@@ -43,3 +43,13 @@ def test_analyze_food_empty_file(client):
     )
     assert response.status_code == 400
     assert "empty" in response.json()["detail"].lower()
+
+def test_analyze_food_oversized_file(client):
+    # Maximum allowed size is 15MB. 16MB should trigger HTTP 413
+    oversized_bytes = b"0" * (16 * 1024 * 1024)
+    response = client.post(
+        "/api/food/analyze",
+        files={"file": ("huge_plate.jpg", oversized_bytes, "image/jpeg")}
+    )
+    assert response.status_code == 413
+    assert "exceeds" in response.json()["detail"].lower()

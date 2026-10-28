@@ -33,6 +33,15 @@ export const api = {
     return handleResponse(res);
   },
 
+  async verifyApiKey(apiKey, apply = true) {
+    const res = await fetch(`${API_BASE_URL}/api/settings/verify-api-key`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, apply }),
+    });
+    return handleResponse(res);
+  },
+
   // Food Analysis
   async analyzeFood(file, forceDemo = false) {
     const formData = new FormData();

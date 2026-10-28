@@ -170,7 +170,28 @@ export default function FreshnessAnalysis({ forceDemo }) {
             <div className="space-y-6 animate-fadeIn">
               {/* Primary Assessment Card */}
               <div className="p-6 rounded-3xl bg-white border border-cream-200 shadow-soft space-y-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Image Evidence */}
+                {result.image_filename && (
+                  <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-slate-900 shadow-inner">
+                    <img
+                      src={api.getUploadUrl(result.image_filename)}
+                      alt={result.item_name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-4">
+                      <div className="text-white space-y-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 block">
+                          Visual Screening Target
+                        </span>
+                        <h4 className="font-bold text-sm sm:text-base leading-tight drop-shadow-sm">
+                          {result.item_name}
+                        </h4>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-start justify-between gap-3 pt-1">
                   <div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       Inspected Item

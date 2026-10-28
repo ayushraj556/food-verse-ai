@@ -20,3 +20,17 @@ def test_hygiene_analysis_image(client, sample_image_bytes):
     get_res = client.get(f"/api/hygiene/{rec_id}")
     assert get_res.status_code == 200
     assert get_res.json()["overall_hygiene_score"] == data["overall_hygiene_score"]
+
+def test_hygiene_analysis_video(client):
+    fake_video = b"test video binary bytes"
+    response = client.post(
+        "/api/hygiene/analyze",
+        files={"file": ("kitchen_cam.mp4", fake_video, "video/mp4")},
+        data={"force_demo": "true"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["media_type"] == "video"
+    assert "overall_hygiene_score" in data
+    assert "gloves_observed" in data
+    assert data["is_demo"] is True

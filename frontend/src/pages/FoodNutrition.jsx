@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  Maximize2
 } from 'lucide-react';
 import { api } from '../api/client';
 import ImageDropzone from '../components/ImageDropzone';
@@ -151,7 +152,28 @@ export default function FoodNutrition({ forceDemo }) {
             <div className="space-y-6 animate-fadeIn">
               {/* Header Card */}
               <div className="p-6 rounded-3xl bg-white border border-cream-200 shadow-soft space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Uploaded Evidence Image Preview */}
+                {result.image_filename && (
+                  <div className="relative w-full h-48 rounded-2xl overflow-hidden bg-slate-900 shadow-inner group">
+                    <img
+                      src={api.getUploadUrl(result.image_filename)}
+                      alt={result.food_name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-4">
+                      <div className="text-white space-y-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amberfood-300 block">
+                          Visual Input Inspected
+                        </span>
+                        <h4 className="font-bold text-sm sm:text-base leading-tight drop-shadow-sm">
+                          {result.food_name}
+                        </h4>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-start justify-between gap-3 pt-1">
                   <div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-forest-600 bg-forest-50 px-2.5 py-0.5 rounded-md">
                       {result.category || 'General Dish'}

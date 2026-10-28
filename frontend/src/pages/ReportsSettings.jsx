@@ -11,7 +11,10 @@ import {
   CheckCircle,
   AlertTriangle,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../api/client';
 import DemoBadge from '../components/DemoBadge';
@@ -19,6 +22,11 @@ import DemoBadge from '../components/DemoBadge';
 export default function ReportsSettings({ systemHealth, forceDemo, setForceDemo }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // API Key Verification Tool state
+  const [inputKey, setInputKey] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState(null);
 
   const fetchStats = async () => {
     try {
@@ -35,6 +43,27 @@ export default function ReportsSettings({ systemHealth, forceDemo, setForceDemo 
   useEffect(() => {
     fetchStats();
   }, []);
+
+  const handleVerifyKey = async (e) => {
+    e.preventDefault();
+    if (!inputKey.trim()) {
+      setVerifyResult({ valid: false, message: 'Please enter a Gemini API Key to test.' });
+      return;
+    }
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const res = await api.verifyApiKey(inputKey.trim(), true);
+      setVerifyResult(res);
+      if (res.valid) {
+        setInputKey('');
+      }
+    } catch (err) {
+      setVerifyResult({ valid: false, message: err.message || 'API verification failed.' });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -132,6 +161,82 @@ export default function ReportsSettings({ systemHealth, forceDemo, setForceDemo 
             <span>Export Structured JSON</span>
           </a>
         </div>
+      </div>
+
+      {/* Live API Key Configurator / Tester */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-cream-200 shadow-soft space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-forest-50 text-forest-600 flex items-center justify-center">
+            <Key className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              Interactive Gemini API Key Verification
+            </h3>
+            <p className="text-xs text-slate-500">
+              Connect or test your Google Gemini API key live. When verified, the system seamlessly transitions to live multimodal AI mode.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleVerifyKey} className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="Paste your Google Gemini API Key (e.g. AIzaSy...)"
+                className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-cream-300 focus:outline-hidden focus:border-forest-500 bg-cream-50/50 font-mono"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={verifying}
+              className="px-5 py-2.5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            >
+              {verifying ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Testing Key...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amberfood-300" />
+                  <span>Verify & Connect Key</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {verifyResult && (
+            <div
+              className={`p-3.5 rounded-xl text-xs flex items-start gap-2 border ${
+                verifyResult.valid
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-rose-50 border-rose-200 text-rose-900'
+              }`}
+            >
+              {verifyResult.valid ? (
+                <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+              )}
+              <div>
+                <span className="font-bold block">
+                  {verifyResult.valid ? 'API Key Authenticated Successfully' : 'Authentication Failed'}
+                </span>
+                <p className="opacity-90">{verifyResult.message}</p>
+                {verifyResult.valid && (
+                  <span className="text-[11px] font-semibold text-emerald-700 block mt-1">
+                    System Mode updated: {verifyResult.active_mode} ({verifyResult.model})
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </form>
       </div>
 
       {/* System Settings & Diagnostics Section */}
@@ -239,7 +344,7 @@ export default function ReportsSettings({ systemHealth, forceDemo, setForceDemo 
         </div>
 
         <div className="p-4 rounded-2xl bg-cream-50 border border-cream-200 text-xs text-slate-600 space-y-2">
-          <span className="font-bold text-slate-800 block">How to configure your live Gemini API Key:</span>
+          <span className="font-bold text-slate-800 block">How to configure your live Gemini API Key in `.env`:</span>
           <p>
             Create or edit <code className="font-mono bg-cream-200 px-1 py-0.5 rounded text-forest-800">backend/.env</code> with:
           </p>

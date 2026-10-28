@@ -18,3 +18,12 @@ def test_freshness_analysis_valid(client, sample_png_bytes):
     get_res = client.get(f"/api/freshness/{rec_id}")
     assert get_res.status_code == 200
     assert get_res.json()["freshness_status"] == data["freshness_status"]
+
+def test_freshness_invalid_mime_type(client):
+    fake_doc = b"Invalid PDF document bytes"
+    response = client.post(
+        "/api/freshness/analyze",
+        files={"file": ("doc.pdf", fake_doc, "application/pdf")}
+    )
+    assert response.status_code == 400
+    assert "invalid file type" in response.json()["detail"].lower()

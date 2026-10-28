@@ -28,6 +28,13 @@ class GeminiClientWrapper:
     def is_available(self) -> bool:
         return bool(settings.GEMINI_API_KEY and self.get_client() is not None)
 
+    def set_api_key(self, key: str):
+        settings.GEMINI_API_KEY = key.strip()
+        self._client = None
+        self._initialized = False
+        if settings.GEMINI_API_KEY:
+            self.get_client()
+
     @staticmethod
     def extract_json(text: str) -> Optional[Dict[str, Any]]:
         """Extract valid JSON from LLM response, stripping markdown code blocks if present."""
@@ -52,6 +59,50 @@ class GeminiClientWrapper:
             logger.warning(f"Could not parse valid JSON from text: {text[:200]}...")
             return None
 
+    def verify_api_key(self, test_key: Optional[str] = None) -> Tuple[bool, str, Optional[str]]:
+        """
+        Actively verifies whether a Gemini API key can authenticate and generate text.
+        Returns: (is_valid, status_message, detected_model)
+        """
+        key_to_test = (test_key or settings.GEMINI_API_KEY).strip()
+        if not key_to_test:
+            return False, "No API key provided.", None
+
+        try:
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=key_to_test)
+            candidate_models = [settings.GEMINI_MODEL, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+            # Deduplicate while preserving order
+            models_to_test = []
+            for m in candidate_models:
+                if m not in models_to_test:
+                    models_to_test.append(m)
+
+            last_error = ""
+            for model_id in models_to_test:
+                try:
+                    response = client.models.generate_content(
+                        model=model_id,
+                        contents="Food Verse AI verification ping",
+                        config=types.GenerateContentConfig(max_output_tokens=5)
+                    )
+                    if response and (response.text or response.candidates):
+                        return True, f"Verified connection to Google GenAI using model '{model_id}'", model_id
+                except Exception as err:
+                    err_msg = str(err)
+                    last_error = err_msg
+                    if "404" in err_msg or "not found" in err_msg.lower():
+                        continue
+                    # Credential or quota errors
+                    return False, f"Gemini API authentication failed: {err_msg}", None
+
+            return False, f"All candidate Gemini models failed: {last_error}", None
+
+        except Exception as e:
+            return False, f"GenAI SDK error: {str(e)}", None
+
     def generate_multimodal_json(
         self,
         image_bytes: bytes,
@@ -61,7 +112,7 @@ class GeminiClientWrapper:
         model: Optional[str] = None
     ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
-        Sends image and prompts to Gemini API and expects structured JSON output.
+        Sends image and prompts to Gemini API with JSON mime type configuration.
         Returns: (parsed_json, error_message)
         """
         client = self.get_client()
@@ -69,34 +120,46 @@ class GeminiClientWrapper:
             return None, "Gemini API key is not configured (Demo Mode active)."
 
         target_model = model or settings.GEMINI_MODEL
-        try:
-            from google.genai import types
+        candidate_models = [target_model, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        models_to_try = []
+        for m in candidate_models:
+            if m not in models_to_try:
+                models_to_try.append(m)
 
-            full_prompt = f"{system_prompt}\n\nUSER REQUEST:\n{user_prompt}\n\nIMPORTANT: Return ONLY a valid JSON object matching the requested schema. No conversational filler."
+        from google.genai import types
 
-            contents = [
-                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                full_prompt
-            ]
+        last_error = ""
+        for model_id in models_to_try:
+            try:
+                contents = [
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    f"{system_prompt}\n\nUSER REQUEST:\n{user_prompt}\n\nRespond ONLY with a valid JSON object matching the schema."
+                ]
 
-            response = client.models.generate_content(
-                model=target_model,
-                contents=contents,
-            )
+                config = types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
 
-            if not response or not response.text:
-                return None, "Empty response received from Gemini model."
+                response = client.models.generate_content(
+                    model=model_id,
+                    contents=contents,
+                    config=config
+                )
 
-            parsed = self.extract_json(response.text)
-            if not parsed:
-                return None, f"Failed to extract structured JSON from model response. Raw text snippet: {response.text[:200]}"
+                if response and response.text:
+                    parsed = self.extract_json(response.text)
+                    if parsed:
+                        return parsed, None
 
-            return parsed, None
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"Model {model_id} call failed: {last_error}. Trying next candidate if available.")
+                if "not found" in last_error.lower() or "404" in last_error:
+                    continue
+                # If quota/auth error, don't spam models
+                break
 
-        except Exception as e:
-            error_str = str(e)
-            logger.error(f"Gemini multimodal generation error: {error_str}")
-            return None, f"AI generation error: {error_str}"
+        return None, f"AI generation error: {last_error}"
 
     def generate_text_json(
         self,
@@ -105,7 +168,7 @@ class GeminiClientWrapper:
         model: Optional[str] = None
     ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         """
-        Sends text prompt to Gemini API and expects structured JSON output.
+        Sends text prompt to Gemini API with JSON mime type configuration.
         Returns: (parsed_json, error_message)
         """
         client = self.get_client()
@@ -113,26 +176,40 @@ class GeminiClientWrapper:
             return None, "Gemini API key is not configured (Demo Mode active)."
 
         target_model = model or settings.GEMINI_MODEL
-        try:
-            full_prompt = f"{system_prompt}\n\nUSER REQUEST:\n{user_prompt}\n\nIMPORTANT: Return ONLY a valid JSON object matching the requested schema. No conversational preamble."
+        candidate_models = [target_model, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        models_to_try = []
+        for m in candidate_models:
+            if m not in models_to_try:
+                models_to_try.append(m)
 
-            response = client.models.generate_content(
-                model=target_model,
-                contents=full_prompt,
-            )
+        from google.genai import types
 
-            if not response or not response.text:
-                return None, "Empty response received from Gemini model."
+        last_error = ""
+        for model_id in models_to_try:
+            try:
+                full_prompt = f"{system_prompt}\n\nUSER REQUEST:\n{user_prompt}\n\nRespond ONLY with a valid JSON object matching the requested schema."
+                config = types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
 
-            parsed = self.extract_json(response.text)
-            if not parsed:
-                return None, f"Failed to extract structured JSON from model response. Raw snippet: {response.text[:200]}"
+                response = client.models.generate_content(
+                    model=model_id,
+                    contents=full_prompt,
+                    config=config
+                )
 
-            return parsed, None
+                if response and response.text:
+                    parsed = self.extract_json(response.text)
+                    if parsed:
+                        return parsed, None
 
-        except Exception as e:
-            error_str = str(e)
-            logger.error(f"Gemini text generation error: {error_str}")
-            return None, f"AI generation error: {error_str}"
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"Model {model_id} call failed: {last_error}.")
+                if "not found" in last_error.lower() or "404" in last_error:
+                    continue
+                break
+
+        return None, f"AI generation error: {last_error}"
 
 ai_client = GeminiClientWrapper()
