@@ -6,7 +6,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![Google GenAI SDK](https://img.shields.io/badge/Google_GenAI_SDK-2.33-4285F4.svg?logo=google&logoColor=white)](https://pypi.org/project/google-genai/)
 [![SQLite](https://img.shields.io/badge/SQLite-SQLAlchemy_2.0-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlalchemy.org)
-[![Tests](https://img.shields.io/badge/Tests-10%2F10%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-15%2F15%20Passing-brightgreen.svg)]()
 
 > A full-stack, multimodal food intelligence platform that analyzes food images, short kitchen videos, and text inputs to deliver dietary recognition, macronutrient estimation, freshness screening, kitchen sanitation auditing, and personalized 7-day meal planning.
 
@@ -182,15 +182,17 @@ Or manually using pytest:
 PYTHONPATH=. backend/venv/bin/pytest backend/tests/ -v
 ```
 
-**Test Coverage Includes:**
-- System health check & SQLite connectivity
+**Test Coverage (15 Comprehensive Passing Tests):**
+- System health check & SQLite database connectivity
+- Root API metadata and Swagger docs endpoint
+- Interactive Gemini API key verification (empty key and invalid key rejection)
 - Valid and invalid image MIME types (JPEG, PNG, WEBP vs text/pdf)
-- Zero-byte file rejection and upload size limits
+- Zero-byte file rejection and oversized upload rejection (413 Content Too Large)
 - Food nutrition response schema & disclaimer presence
-- Freshness classification states (`Fresh`, `Moderately Fresh`, `Possibly Spoiled`)
-- Kitchen hygiene analysis (Gloves, hair coverings, surface cleanliness)
-- Recipe generation and deletion
-- 7-Day Meal Plan full CRUD (Create, Read, Update, Delete)
+- Freshness classification states (`Fresh`, `Moderately Fresh`, `Possibly Spoiled`) & invalid MIME rejection
+- Kitchen hygiene analysis with still images and video files (`.mp4`)
+- Recipe formulation, ingredient matching, and deletion
+- 7-Day Meal Plan full CRUD (Create, Read, Update meal plans with inline data, and Delete)
 - Dynamic dashboard statistics calculation and CSV/JSON report exports
 
 ---
