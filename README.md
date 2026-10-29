@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Food Verse AI – Multimodal Food Intelligence Agent
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -284,3 +285,7 @@ The application is engineered to be **100% functional out-of-the-box** regardles
 2. **Freshness Screening**: Visual screening cannot detect invisible pathogenic bacteria (*Salmonella*, *Listeria*, *E. coli*) or deep fungal toxins. When in doubt, prioritize safety and discard questionable food.
 3. **Kitchen Hygiene Inspection**: Visual indicators assess only observable workstation practices. This does not constitute health department certification or HACCP compliance verification.
 4. **Allergies**: Always read packaging labels directly before consuming or preparing meals for individuals with severe food allergies.
+=======
+# food-verse-ai
+A multimodal AI-powered food intelligence platform for food recognition, nutrition analysis, freshness detection, hygiene monitoring, and personalized meal planning.
+>>>>>>> b42dff876e57def4765a56de97fa5de8fa8237f0
