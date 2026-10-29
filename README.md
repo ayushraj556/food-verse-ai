@@ -230,7 +230,6 @@ MAX_UPLOAD_SIZE_MB=15
 Copy `frontend/.env.example` to `frontend/.env`:
 
 ```ini
-VITE_API_BASE_URL=http://localhost:8000
 ```
 
 ---
